@@ -71,24 +71,41 @@ const sumPass = (passes, passBatches) => {
 
 function sumNamedValidBatches(passBatches, name){
   const nowMs = firebase.firestore.Timestamp.now().toMillis();
+
+  // ✅ 공백 제거해서 비교 (예: "청소년10회권" / "청소년 10회권" 둘 다 매칭)
+  const want = (name || '').replace(/\s+/g, '');
+
   let s = 0;
   Object.values(passBatches || {}).forEach(b=>{
     if (!b) return;
-    if ((b.name||'') !== name) return;
+
+    const got = (b.name || '').replace(/\s+/g, '');
+    if (got !== want) return;
+
     if (b.expireAt && b.expireAt.toMillis() < nowMs) return; // 만료 제외
     s += (b.count || 0);
   });
   return s;
 }
-// === NEW: KPI 집계 헬퍼 (10/20만 다회권, 스탬프/평일 분리) ===
+
+// === NEW: KPI 집계 헬퍼 (다회권=성인10/20 + 청소년10/20, 스탬프/평일 분리) ===
 function computeKpisFromBatches(passBatches){
   const freeStamp   = sumNamedValidBatches(passBatches,'스탬프적립쿠폰');
   const freeWeekday = sumNamedValidBatches(passBatches,'평일이용권');
+
   const pass10      = sumNamedValidBatches(passBatches,'10회권');
   const pass20      = sumNamedValidBatches(passBatches,'20회권');
-  const general     = pass10 + pass20; // 다회권 잔여는 10/20만
-  return { freeStamp, freeWeekday, pass10, pass20, general };
+
+  // ✅ 추가
+  const youth10     = sumNamedValidBatches(passBatches,'청소년 10회권');
+  const youth20     = sumNamedValidBatches(passBatches,'청소년 20회권');
+
+  // ✅ 다회권 잔여 = 성인10/20 + 청소년10/20 합계
+  const general     = pass10 + pass20 + youth10 + youth20;
+
+  return { freeStamp, freeWeekday, pass10, pass20, youth10, youth20, general };
 }
+
 
 // ✅ 기존 유틸 유지(레거시용)
 function getPassCount(v){ return typeof v==='number' ? (v||0) : (v?.count||0); }
