@@ -262,7 +262,7 @@ function setExpireDefaultByName(name){
     target = addMonths(today, 1);
   } else if (n === '스탬프적립쿠폰') {
     target = addMonths(today, 1);
-  } else if (n === '10회권' || n === '20회권') {
+  } else if (n === '10회권' || n === '20회권' || n === '청소년10회권' || n === '청소년20회권') {
     target = addYears(today, 1);
   } else {
     target = addYears(today, 1); // 기본
@@ -271,6 +271,7 @@ function setExpireDefaultByName(name){
   el.value = ymdLocal(target);
   el.dataset.autoset = '1';
 }
+
 
 // 사용자가 날짜를 직접 바꾸면 autoset 해제
 document.getElementById('passExpire')?.addEventListener('input', (e)=>{
@@ -415,8 +416,14 @@ passSelect?.addEventListener('change', () => {
 
 const passPreset10 = $('#passPreset10');
 const passPreset20 = $('#passPreset20');
+
+// ✅ 추가
+const passPresetY10 = $('#passPresetY10');
+const passPresetY20 = $('#passPresetY20');
+
 const passPresetFree = document.getElementById('passPresetFree');
 const passPresetWk   = document.getElementById('passPresetWk');
+
 
 
 passPresetFree?.addEventListener('click', ()=>{
@@ -1519,8 +1526,38 @@ btnResetStamp?.addEventListener('click', async()=>{
 });
 
 // 13) 다회권 (기존 +/-1)
-passPreset10?.addEventListener('click', ()=>{ if(passName&&passCount){ passName.value='10회권'; passCount.value='10'; setExpireDefaultByName('10회권');}});
-passPreset20?.addEventListener('click', ()=>{ if(passName&&passCount){ passName.value='20회권'; passCount.value='20'; setExpireDefaultByName('20회권');}});
+passPreset10?.addEventListener('click', ()=>{
+  if(passName && passCount){
+    passName.value='10회권';
+    passCount.value='10';
+    setExpireDefaultByName('10회권');
+  }
+});
+passPreset20?.addEventListener('click', ()=>{
+  if(passName && passCount){
+    passName.value='20회권';
+    passCount.value='20';
+    setExpireDefaultByName('20회권');
+  }
+});
+
+// ✅ 추가: 청소년 10/20
+passPresetY10?.addEventListener('click', ()=>{
+  if(passName && passCount){
+    passName.value='청소년 10회권';
+    passCount.value='10';
+    setExpireDefaultByName('청소년 10회권');
+  }
+});
+passPresetY20?.addEventListener('click', ()=>{
+  if(passName && passCount){
+    passName.value='청소년 20회권';
+    passCount.value='20';
+    setExpireDefaultByName('청소년 20회권');
+  }
+});
+
+
 // 권종명 수동 입력/변경 시 자동 만료일 채우기 (사용자가 직접 날짜 고치기 전까지만)
 passName?.addEventListener('change', ()=>{
   setExpireDefaultByName(passName.value || '');
@@ -1867,17 +1904,24 @@ async function loadSelf(user){
 const freeSum   = sumNamedValidBatches(d.passBatches, '스탬프적립쿠폰');
 const freeWkSum = sumNamedValidBatches(d.passBatches, '평일이용권');
 
-// 🎫 다회권 총 잔여(무료권·평일무료권 제외, 배치+레거시 합산)
-const passTotal = 
+// ✅ 공백 제거 기준으로 무료권 판단
+const isFreeType = (s) => {
+  const n = (s || '').replace(/\s+/g,'');
+  return n === '스탬프적립쿠폰' || n === '평일이용권';
+};
+
+// 🎫 다회권 총 잔여(무료권·평일이용권 제외, 배치+레거시 합산)
+const passTotal =
   Object.values(d.passBatches || {}).reduce((acc, b) => {
     const name = (b?.name || '');
-    if (name === '스탬프적립쿠폰' || name === '평일이용권') return acc;
+    if (isFreeType(name)) return acc;
     return acc + (b?.count || 0);
   }, 0) +
   Object.entries(d.passes || {}).reduce((acc, [k, v]) => {
-    if (k === '스탬프적립쿠폰' || k === '평일이용권') return acc;
+    if (isFreeType(k)) return acc;
     return acc + getPassCount(v);
-  }, 0);  
+  }, 0);
+ 
 
 // 요약 박스 + 도장 격자(2행×5열)
     cardEl.innerHTML = `
